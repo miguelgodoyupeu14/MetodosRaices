@@ -7,50 +7,42 @@ app = Flask(__name__)
 
 
 def generar_g_automatica(f_expr, x0, local_dict):
-    x = sp.Symbol('x')
-    # Detectar si es polinómica
-    poly = None
+    x = sp.symbols('x')
+    g_opciones = []
     try:
-        poly = sp.Poly(f_expr, x)
-    except Exception:
-        poly = None
-    from sympy import latex
-    opciones_g = []
-    explicaciones = []
-    if poly and poly.degree() > 1:
-        deg = poly.degree()
-        monomio = poly.coeff_monomial(x**deg)
-        resto = f_expr - monomio*x**deg
-        despeje1 = -resto / monomio
-        g1 = sp.Pow(despeje1, 1/deg)
-        opciones_g.append({'expr': g1, 'latex': latex(g1), 'desc': f"Despeje por x^{deg}"})
-        if deg == 3:
-            g2 = sp.Pow(x + 1, 1/3)
-            opciones_g.append({'expr': g2, 'latex': latex(g2), 'desc': "Despeje por x en x³ - x - 1"})
-        if monomio == 1:
-            g3 = 1 + x - x**deg
-            opciones_g.append({'expr': g3, 'latex': latex(g3), 'desc': f"Despeje alternativo para x^{deg}"})
-    soluciones = sp.solve(sp.Eq(f_expr, 0), x)
-    if not soluciones:
-        raise ValueError("No se pudo despejar g(x) automáticamente.")
-    for sol in soluciones:
-        opciones_g.append({'expr': sol, 'latex': latex(sol), 'desc': "Despeje general"})
-    # Sugerir x0 donde |g'(x0)|<1 para cada opción
-    sugerencias = []
-    for idx, g in enumerate(opciones_g):
-        g_prime = sp.lambdify(x, sp.diff(g['expr'], x), modules=['numpy', local_dict])
-        # Buscar en un rango de x0
-        sugerido = None
-        for val in np.linspace(-10, 10, 100):
+        # Definimos la ecuación f(x) = 0
+        eq = sp.Eq(f_expr, 0)
+
+        # Intentamos resolver para x
+        soluciones = sp.solve(eq, x, dict=True)
+
+        # Guardamos las soluciones en formato latex legible
+        for sol in soluciones:
+            g_forma = sol[x]
+            g_opciones.append({
+                "expr": g_forma,
+                "latex": sp.latex(g_forma),
+                "sugerido_x0": float(x0) if x0 is not None else 1
+            })
+
+        # Si no encontró nada (ejemplo x^3 - x - 1), damos sugerencias manuales
+        if not g_opciones:
             try:
-                if abs(g_prime(val)) < 1:
-                    sugerido = val
-                    break
-            except Exception:
-                continue
-        sugerencias.append(sugerido)
-        opciones_g[idx]['sugerido_x0'] = sugerido
-    return opciones_g
+                # Caso típico: x^3 - x - 1 => x = (x+1)^(1/3)
+                g_forma = (x + 1)**(sp.Rational(1, 3))
+                g_opciones.append({
+                    "expr": g_forma,
+                    "latex": sp.latex(g_forma),
+                    "sugerido_x0": float(x0) if x0 is not None else 1
+                })
+            except:
+                pass
+
+    except Exception as e:
+        print("Error en generar_g_automatica:", e)
+
+    return g_opciones
+
 
 # Métodos numéricos
 def punto_fijo(g, x0, tol, max_iter):
@@ -225,7 +217,7 @@ def index():
                 else:
                     raiz = None
                     iteraciones = []
-                    parametros["g_opciones"] = [{'latex': g['latex'], 'desc': g['desc'], 'sugerido_x0': g['sugerido_x0']} for g in opciones_g]
+                    parametros["g_opciones"] = [{'latex': g['latex'], 'sugerido_x0': g['sugerido_x0']} for g in opciones_g]
             elif metodo == 'newton':
                 df_expr = sp.diff(sp.sympify(func_str, locals=sympy_dict), x)
                 df = sp.lambdify(x, df_expr, modules=['numpy', numpy_dict])

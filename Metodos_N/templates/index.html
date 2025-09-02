@@ -1,24 +1,68 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <title>Raíces de ecuaciones no lineales (Punto Fijo, Newton-Raphson, Secante)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://unpkg.com/mathlive"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style>
-    body { font-family: "Segoe UI", Roboto, Arial, sans-serif; margin: 0; background: #f9fafb; color: #222; }
-    .container { max-width: 700px; margin: 32px auto; background: #fff; padding: 32px 36px; border-radius: 16px; box-shadow: 0 4px 24px #b0c4de; }
-    h1 { margin-bottom: 0.5rem; font-size: 2rem; text-align: center; }
-    .muted { color: #555; font-size: 14px; margin-bottom: 16px; display: block; text-align: center; }
-    .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin: 18px 0; justify-content: center; }
-    label { font-weight: 600; margin-right: 6px; }
-    input, select, button, math-field {
+    body {
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      background: #f9fafb;
+      color: #222;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 32px auto;
+      background: #fff;
+      padding: 32px 36px;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px #b0c4de;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+      text-align: center;
+    }
+
+    .muted {
+      color: #555;
+      font-size: 14px;
+      margin-bottom: 16px;
+      display: block;
+      text-align: center;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+      margin: 18px 0;
+      justify-content: center;
+    }
+
+    label {
+      font-weight: 600;
+      margin-right: 6px;
+    }
+
+    input,
+    select,
+    button,
+    math-field {
       padding: 10px 14px;
       font-size: 16px;
       border-radius: 8px;
       border: 1px solid #b0c4de;
       margin-bottom: 0;
     }
+
     math-field {
       min-width: 220px;
       font-size: 1.2rem;
@@ -28,6 +72,7 @@
       padding: 10px 16px;
       margin-right: 12px;
     }
+
     button {
       background: #2563eb;
       color: white;
@@ -36,57 +81,90 @@
       transition: 0.2s;
       margin-bottom: 0;
     }
-    button:hover { background: #1e40af; }
-    button:active { transform: scale(0.97); }
-    .tag { font-size: 13px; background: #eef; border-radius: 999px; padding: 3px 10px; margin-left: 8px; }
-    .dynamic { display: none; }
+
+    button:hover {
+      background: #1e40af;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    .tag {
+      font-size: 13px;
+      background: #eef;
+      border-radius: 999px;
+      padding: 3px 10px;
+      margin-left: 8px;
+    }
+
+    .dynamic {
+      display: none;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>Raíces de ecuaciones no lineales en una variable</h1>
     <span class="muted">Método del punto fijo, método de Newton-Raphson, método de la secante</span>
     <form id="calcForm" method="post" autocomplete="off">
       <div class="row">
-  <label for="func">f(x):</label>
-  <math-field id="func">{{ request.form['func_str'] if request.form.get('func_str') else 'x^3 - x - 1' }}</math-field>
+        <label for="func">f(x):</label>
+        <math-field id="func">{{ request.form['func_str'] if request.form.get('func_str') else 'x^3 - x - 1'
+          }}</math-field>
       </div>
       <div class="row">
         <label for="metodo">Método:</label>
         <select id="metodo" name="metodo" onchange="mostrarCampos()">
-          <option value="punto_fijo" {% if request.form.get('metodo') == 'punto_fijo' %}selected{% endif %}>Punto Fijo</option>
-          <option value="newton" {% if request.form.get('metodo') == 'newton' %}selected{% endif %}>Newton-Raphson</option>
-          <option value="secante" {% if request.form.get('metodo') == 'secante' %}selected{% endif %}>Secante</option>
-  <!-- El valor de la función se mantiene por el backend y el script, no se actualiza salvo que el usuario lo cambie -->
+          <option value="punto_fijo" {% if request.form.get('metodo')=='punto_fijo' %}selected{% endif %}>Punto Fijo
+          </option>
+          <option value="newton" {% if request.form.get('metodo')=='newton' %}selected{% endif %}>Newton-Raphson
+          </option>
+          <option value="secante" {% if request.form.get('metodo')=='secante' %}selected{% endif %}>Secante</option>
+          <!-- El valor de la función se mantiene por el backend y el script, no se actualiza salvo que el usuario lo cambie -->
         </select>
       </div>
 
 
       <div class="row" id="campo_x0">
-  <label for="x0" id="label_x0">x₀:</label>
-  <input type="number" id="x0" name="x0" value="{{ request.form['x0'] if request.form.get('x0') else 1 }}" step="any" required>
+        <label for="x0" id="label_x0">x₀:</label>
+        <input type="number" id="x0" name="x0" value="{{ request.form['x0'] if request.form.get('x0') else 1 }}"
+          step="any" required>
       </div>
+
       {% if g_opciones %}
-      <div class="row" id="campo_g_opciones">
-        <label for="g_opciones">Opciones de g(x):</label>
-        <select id="g_opciones" onchange="document.getElementById('g').setValue(this.value)">
-          <option value="">Selecciona una opción</option>
+      <div class="row" id="campo_g">
+        <label for="g_idx">Opciones de g(x):</label>
+        <select name="g_idx" id="g" required>
+          <option value="">-- Selecciona una opción --</option>
           {% for g in g_opciones %}
-            <option value="{{ g }}">{{ g }}</option>
+          <option value="{{ loop.index0 }}">
+            \( g(x) = {{ g.latex|safe }} \)
+            {% if g.sugerido_x0 is not none %}
+            (sugerido \( x_0 = {{ g.sugerido_x0 }} \))
+            {% endif %}
+          </option>
+
           {% endfor %}
         </select>
-        <span class="tag">Puedes seleccionar y editar la opción en el campo g(x)</span>
       </div>
       {% endif %}
-  <div class="row" id="campo_x1">
-  <label for="x1" id="label_x1">x₁:</label>
-  <input type="number" id="x1" name="x1" value="{{ request.form['x1'] if request.form.get('x1') else 2 }}" step="any" required>
+
+      <div id="preview_g" style="margin-top:10px; font-size:1.2rem; color:#111;"></div>
+
+      <div class="row" id="campo_x1">
+        <label for="x1" id="label_x1">x₁:</label>
+        <input type="number" id="x1" name="x1" value="{{ request.form['x1'] if request.form.get('x1') else 2 }}"
+          step="any" required>
       </div>
       <div class="row">
-  <label for="tol">Tolerancia:</label>
-  <input type="number" id="tol" name="tol" value="{{ request.form['tol'] if request.form.get('tol') else 0.0001 }}" step="any" required>
-  <label for="max_iter">Iteraciones máx:</label>
-  <input type="number" id="max_iter" name="max_iter" value="{{ request.form['max_iter'] if request.form.get('max_iter') else 50 }}" min="1" max="1000" required>
+        <label for="tol">Tolerancia:</label>
+        <input type="number" id="tol" name="tol"
+          value="{{ request.form['tol'] if request.form.get('tol') else 0.0001 }}" step="any" required>
+        <label for="max_iter">Iteraciones máx:</label>
+        <input type="number" id="max_iter" name="max_iter"
+          value="{{ request.form['max_iter'] if request.form.get('max_iter') else 50 }}" min="1" max="1000" required>
       </div>
       <div class="row">
         <button type="submit">Calcular raíz</button>
@@ -94,69 +172,79 @@
     </form>
     <!-- Aquí irán los resultados -->
     {% if error_msg %}
-      <div style="color: #b91c1c; background: #fee2e2; border-radius: 8px; padding: 12px; margin: 18px 0; text-align: center;">
-        <strong>Error:</strong> {{ error_msg }}
-      </div>
+    <div
+      style="color: #b91c1c; background: #fee2e2; border-radius: 8px; padding: 12px; margin: 18px 0; text-align: center;">
+      <strong>Error:</strong> {{ error_msg }}
+    </div>
     {% endif %}
     {% if resultado is not none %}
-      <div style="background: #e0f7fa; border-radius: 8px; padding: 12px; margin: 18px 0; text-align: center;">
-        <strong>Raíz encontrada:</strong> {{ resultado }}
-      </div>
+    <div style="background: #e0f7fa; border-radius: 8px; padding: 12px; margin: 18px 0; text-align: center;">
+      <strong>Raíz encontrada:</strong> {{ resultado }}
+    </div>
     {% endif %}
     {% if iteraciones and iteraciones|length > 0 %}
-      <div style="margin: 18px 0;">
-        <table style="width:100%; border-collapse:collapse; background:#f8fafc; border-radius:8px;">
-          <thead>
-            <tr style="background:#2563eb; color:white;">
-              <th>Iteración</th>
-              {% if request.form.get('metodo') == 'newton' %}
-                <th>xₖ</th>
-                <th>f(xₖ)</th>
-                <th>f'(xₖ)</th>
-                <th>xₖ₊₁</th>
-                <th>eₐₖ%</th>
-              {% elif request.form.get('metodo') == 'secante' %}
-                <th>xₖ₋₁</th>
-                <th>xₖ</th>
-                <th>f(xₖ₋₁)</th>
-                <th>f(xₖ)</th>
-                <th>xₖ₊₁</th>
-                <th>eₐₖ%</th>
-              {% else %}
-                <th>Valor</th>
-                <th>Error</th>
-              {% endif %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for it in iteraciones %}
-            <tr style="text-align:center;">
-              <td>{{ it.iter }}</td>
-              {% if request.form.get('metodo') == 'newton' %}
-                <td>{{ '%.8f'|format(it.xk) }}</td>
-                <td>{{ '%.8f'|format(it.fxk) }}</td>
-                <td>{{ '%.8f'|format(it.dfxk) }}</td>
-                <td>{{ '%.8f'|format(it.xk1) }}</td>
-                <td>{{ '%.8f'|format(it.eak) }}</td>
-              {% elif request.form.get('metodo') == 'secante' %}
-                <td>{{ '%.8f'|format(it.xk_1) }}</td>
-                <td>{{ '%.8f'|format(it.xk) }}</td>
-                <td>{{ '%.8f'|format(it.fxk_1) }}</td>
-                <td>{{ '%.8f'|format(it.fxk) }}</td>
-                <td>{{ '%.8f'|format(it.xk1) }}</td>
-                <td>{{ '%.8f'|format(it.eak) }}</td>
-              {% else %}
-                <td>{{ '%.8f'|format(it.valor) }}</td>
-                <td>{{ '%.8e'|format(it.error) }}</td>
-              {% endif %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <div style="margin: 18px 0;">
+      <table style="width:100%; border-collapse:collapse; background:#f8fafc; border-radius:8px;">
+        <thead>
+          <tr style="background:#2563eb; color:white;">
+            <th>Iteración</th>
+            {% if request.form.get('metodo') == 'newton' %}
+            <th>xₖ</th>
+            <th>f(xₖ)</th>
+            <th>f'(xₖ)</th>
+            <th>xₖ₊₁</th>
+            <th>eₐₖ%</th>
+            {% elif request.form.get('metodo') == 'secante' %}
+            <th>xₖ₋₁</th>
+            <th>xₖ</th>
+            <th>f(xₖ₋₁)</th>
+            <th>f(xₖ)</th>
+            <th>xₖ₊₁</th>
+            <th>eₐₖ%</th>
+            {% else %}
+            <th>Valor</th>
+            <th>Error</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in iteraciones %}
+          <tr style="text-align:center;">
+            <td>{{ it.iter }}</td>
+            {% if request.form.get('metodo') == 'newton' %}
+            <td>{{ '%.8f'|format(it.xk) }}</td>
+            <td>{{ '%.8f'|format(it.fxk) }}</td>
+            <td>{{ '%.8f'|format(it.dfxk) }}</td>
+            <td>{{ '%.8f'|format(it.xk1) }}</td>
+            <td>{{ '%.8f'|format(it.eak) }}</td>
+            {% elif request.form.get('metodo') == 'secante' %}
+            <td>{{ '%.8f'|format(it.xk_1) }}</td>
+            <td>{{ '%.8f'|format(it.xk) }}</td>
+            <td>{{ '%.8f'|format(it.fxk_1) }}</td>
+            <td>{{ '%.8f'|format(it.fxk) }}</td>
+            <td>{{ '%.8f'|format(it.xk1) }}</td>
+            <td>{{ '%.8f'|format(it.eak) }}</td>
+            {% else %}
+            <td>{{ '%.8f'|format(it.valor) }}</td>
+            <td>{{ '%.8e'|format(it.error) }}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% endif %}
   </div>
   <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.MathJax) {
+        MathJax.typeset();
+      }
+    });
+
+    function actualizarPreviewG() {
+      var gSelect = document.getElementById('g');}
+
     function mostrarCampos() {
       var metodo = document.getElementById('metodo').value;
       document.getElementById('campo_g').style.display = metodo === 'punto_fijo' ? 'flex' : 'none';
@@ -177,7 +265,7 @@
         document.getElementById('x1').style.display = 'none';
       }
     }
-    window.onload = function() {
+    window.onload = function () {
       mostrarCampos();
       // Sincronizar math-field con los valores del backend
       var funcValue = "{{ request.form['func_str']|e if request.form.get('func_str') else '' }}";
@@ -187,11 +275,11 @@
       var gValue = "{{ g_expr if g_expr else (request.form['g_str']|e if request.form.get('g_str') else '') }}";
       if (gValue) {
         document.getElementById('g').setValue(gValue);
-      } 
+      }
 
     };
     // Envío del math-field como ascii-math
-    document.getElementById('calcForm').addEventListener('submit', function(e) {
+    document.getElementById('calcForm').addEventListener('submit', function (e) {
       var mf = document.getElementById('func');
       var hidden = document.getElementById('hidden_func');
       if (!hidden) {
@@ -218,4 +306,5 @@
     });
   </script>
 </body>
+
 </html>
